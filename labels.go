@@ -5,17 +5,17 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strconv"
+	"net/url"
 )
 
 const LabelsEndpoint = "labels"
 
 type Label struct {
-	Id       int    `json:"id"`
-	Name     string `json:"name"`
-	Color    int    `json:"color"`
-	Order    int    `json:"order"`
-	Favorite bool   `json:"favorite"`
+	Id         string `json:"id"`
+	Name       string `json:"name"`
+	Color      string `json:"color"`
+	Order      int    `json:"order"`
+	IsFavorite bool   `json:"is_favorite"`
 }
 
 // region GetLabels
@@ -55,8 +55,8 @@ func (p *AddLabelParams) WithOrder(order int) *AddLabelParams {
 	return p
 }
 
-func (p *AddLabelParams) WithColor(color int) *AddLabelParams {
-	if color != 0 {
+func (p *AddLabelParams) WithColor(color string) *AddLabelParams {
+	if color != "" {
 		(*p)["color"] = color
 	}
 
@@ -64,7 +64,7 @@ func (p *AddLabelParams) WithColor(color int) *AddLabelParams {
 }
 
 func (p *AddLabelParams) WithFavorite(favorite bool) *AddLabelParams {
-	(*p)["favorite"] = favorite
+	(*p)["is_favorite"] = favorite
 	return p
 }
 
@@ -84,9 +84,10 @@ func (t *Todoist) AddLabel(ctx context.Context, params *AddLabelParams) (label *
 
 // region GetLabel
 
-func (t *Todoist) GetLabel(ctx context.Context, labelId int) (label *Label, err error) {
+func (t *Todoist) GetLabel(ctx context.Context, labelId string) (label *Label, err error) {
 	label = new(Label)
-	err = t.request(ctx, http.MethodGet, LabelsEndpoint+"/"+strconv.Itoa(labelId), nil, nil, label)
+	encodedLabelId := url.PathEscape(labelId)
+	err = t.request(ctx, http.MethodGet, LabelsEndpoint+"/"+encodedLabelId, nil, nil, label)
 
 	return
 }
@@ -119,8 +120,8 @@ func (p *UpdateLabelParams) WithOrder(order int) *UpdateLabelParams {
 	return p
 }
 
-func (p *UpdateLabelParams) WithColor(color int) *UpdateLabelParams {
-	if color != 0 {
+func (p *UpdateLabelParams) WithColor(color string) *UpdateLabelParams {
+	if color != "" {
 		(*p)["color"] = color
 	}
 
@@ -128,25 +129,27 @@ func (p *UpdateLabelParams) WithColor(color int) *UpdateLabelParams {
 }
 
 func (p *UpdateLabelParams) WithFavorite(favorite bool) *UpdateLabelParams {
-	(*p)["favorite"] = favorite
+	(*p)["is_favorite"] = favorite
 	return p
 }
 
-func (t *Todoist) UpdateLabel(ctx context.Context, labelId int, params *UpdateLabelParams) (err error) {
+func (t *Todoist) UpdateLabel(ctx context.Context, labelId string, params *UpdateLabelParams) (err error) {
 	var payload []byte
 	if payload, err = json.Marshal(params); err != nil {
 		return
 	}
 
-	return t.request(ctx, http.MethodPost, LabelsEndpoint+"/"+strconv.Itoa(labelId), nil, bytes.NewBuffer(payload), nil)
+	encodedLabelId := url.PathEscape(labelId)
+	return t.request(ctx, http.MethodPost, LabelsEndpoint+"/"+encodedLabelId, nil, bytes.NewBuffer(payload), nil)
 }
 
 // endregion
 
 // region DeleteLabel
 
-func (t *Todoist) DeleteLabel(ctx context.Context, labelId int) (err error) {
-	return t.request(ctx, http.MethodDelete, LabelsEndpoint+"/"+strconv.Itoa(labelId), nil, nil, nil)
+func (t *Todoist) DeleteLabel(ctx context.Context, labelId string) (err error) {
+	encodedLabelId := url.PathEscape(labelId)
+	return t.request(ctx, http.MethodDelete, LabelsEndpoint+"/"+encodedLabelId, nil, nil, nil)
 }
 
 // endregion

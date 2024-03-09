@@ -5,16 +5,16 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strconv"
+	"net/url"
 )
 
 const CommentsEndpoint = "comments"
 
 type Comment struct {
-	Id         int                    `json:"id"`
-	TaskId     int                    `json:"task_id"`
-	ProjectId  int                    `json:"project_id"`
-	Posted     string                 `json:"posted"`
+	Id         string                 `json:"id"`
+	TaskId     string                 `json:"task_id"`
+	ProjectId  string                 `json:"project_id"`
+	PostedAt   string                 `json:"posted_at"`
 	Content    string                 `json:"content"`
 	Attachment map[string]interface{} `json:"attachment"`
 }
@@ -52,25 +52,25 @@ func MakeGetCommentsParams() *GetCommentsParams {
 	return &params
 }
 
-func (p *GetCommentsParams) WithProjectId(projectId int) *GetCommentsParams {
-	if projectId != 0 {
-		(*p)["project_id"] = strconv.Itoa(projectId)
+func (p *GetCommentsParams) WithProjectId(projectId string) *GetCommentsParams {
+	if projectId != "" {
+		(*p)["project_id"] = projectId
 	}
 
 	return p
 }
 
-func (p *GetCommentsParams) WithTaskId(taskId int) *GetCommentsParams {
-	if taskId != 0 {
-		(*p)["task_id"] = strconv.Itoa(taskId)
+func (p *GetCommentsParams) WithTaskId(taskId string) *GetCommentsParams {
+	if taskId != "" {
+		(*p)["task_id"] = taskId
 	}
 
 	return p
 }
 
-func (t *Todoist) GetComments(ctx context.Context, params *GetCommentsParams) (sections []Section, err error) {
-	sections = make([]Section, 0)
-	err = t.request(ctx, http.MethodGet, CommentsEndpoint, *params, nil, &sections)
+func (t *Todoist) GetComments(ctx context.Context, params *GetCommentsParams) (comments []Comment, err error) {
+	comments = make([]Comment, 0)
+	err = t.request(ctx, http.MethodGet, CommentsEndpoint, *params, nil, &comments)
 
 	return
 }
@@ -87,16 +87,16 @@ func MakeAddCommentParams() *AddCommentParams {
 	return &params
 }
 
-func (p *AddCommentParams) WithTaskId(taskId int) *AddCommentParams {
-	if taskId != 0 {
+func (p *AddCommentParams) WithTaskId(taskId string) *AddCommentParams {
+	if taskId != "" {
 		(*p)["task_id"] = taskId
 	}
 
 	return p
 }
 
-func (p *AddCommentParams) WithProjectId(projectId int) *AddCommentParams {
-	if projectId != 0 {
+func (p *AddCommentParams) WithProjectId(projectId string) *AddCommentParams {
+	if projectId != "" {
 		(*p)["project_id"] = projectId
 	}
 
@@ -135,9 +135,10 @@ func (t *Todoist) AddComment(ctx context.Context, params *AddCommentParams) (com
 
 // region GetComment
 
-func (t *Todoist) GetComment(ctx context.Context, commentId int) (comment *Comment, err error) {
+func (t *Todoist) GetComment(ctx context.Context, commentId string) (comment *Comment, err error) {
 	comment = new(Comment)
-	err = t.request(ctx, http.MethodGet, CommentsEndpoint+"/"+strconv.Itoa(commentId), nil, nil, comment)
+	encodedCommentId := url.PathEscape(commentId)
+	err = t.request(ctx, http.MethodGet, CommentsEndpoint+"/"+encodedCommentId, nil, nil, comment)
 
 	return
 }
@@ -162,21 +163,23 @@ func (p *UpdateCommentParams) WithContent(content string) *UpdateCommentParams {
 	return p
 }
 
-func (t *Todoist) UpdateComment(ctx context.Context, commentId int, params *UpdateCommentParams) (err error) {
+func (t *Todoist) UpdateComment(ctx context.Context, commentId string, params *UpdateCommentParams) (err error) {
 	var payload []byte
 	if payload, err = json.Marshal(params); err != nil {
 		return
 	}
 
-	return t.request(ctx, http.MethodPost, CommentsEndpoint+"/"+strconv.Itoa(commentId), nil, bytes.NewBuffer(payload), nil)
+	encodedCommentId := url.PathEscape(commentId)
+	return t.request(ctx, http.MethodPost, CommentsEndpoint+"/"+encodedCommentId, nil, bytes.NewBuffer(payload), nil)
 }
 
 // endregion
 
 // region DeleteComment
 
-func (t *Todoist) DeleteComment(ctx context.Context, commentId int) (err error) {
-	return t.request(ctx, http.MethodDelete, CommentsEndpoint+"/"+strconv.Itoa(commentId), nil, nil, nil)
+func (t *Todoist) DeleteComment(ctx context.Context, commentId string) (err error) {
+	encodedCommentId := url.PathEscape(commentId)
+	return t.request(ctx, http.MethodDelete, CommentsEndpoint+"/"+encodedCommentId, nil, nil, nil)
 }
 
 // endregion

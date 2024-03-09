@@ -5,28 +5,27 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strconv"
+	"net/url"
 )
 
 const ProjectsEndpoint = "projects"
 
 type Project struct {
-	Id           int    `json:"id"`
-	Name         string `json:"name"`
-	Color        int    `json:"color"`
-	ParentId     int    `json:"parent_id"`
-	Order        int    `json:"order"`
-	CommentCount int    `json:"comment_count"`
-	Shared       bool   `json:"shared"`
-	Favorite     bool   `json:"favorite"`
-	InboxProject bool   `json:"inbox_project"`
-	TeamInbox    bool   `json:"team_inbox"`
-	SyncId       int    `json:"sync_id"`
-	Url          string `json:"url"`
+	Id             string `json:"id"`
+	Name           string `json:"name"`
+	Color          string `json:"color"`
+	ParentId       string `json:"parent_id"`
+	Order          int    `json:"order"`
+	CommentCount   int    `json:"comment_count"`
+	IsShared       bool   `json:"is_shared"`
+	IsFavorite     bool   `json:"is_favorite"`
+	IsInboxProject bool   `json:"is_inbox_project"`
+	IsTeamInbox    bool   `json:"is_team_inbox"`
+	Url            string `json:"url"`
 }
 
 type Collaborator struct {
-	Id    int    `json:"id"`
+	Id    string `json:"id"`
 	Name  string `json:"name"`
 	Email string `json:"email"`
 }
@@ -60,16 +59,16 @@ func (p *AddProjectParams) WithName(name string) *AddProjectParams {
 	return p
 }
 
-func (p *AddProjectParams) WithParentId(parentId int) *AddProjectParams {
-	if parentId != 0 {
+func (p *AddProjectParams) WithParentId(parentId string) *AddProjectParams {
+	if parentId != "" {
 		(*p)["parent_id"] = parentId
 	}
 
 	return p
 }
 
-func (p *AddProjectParams) WithColor(color int) *AddProjectParams {
-	if color != 0 {
+func (p *AddProjectParams) WithColor(color string) *AddProjectParams {
+	if color != "" {
 		(*p)["color"] = color
 	}
 
@@ -77,7 +76,7 @@ func (p *AddProjectParams) WithColor(color int) *AddProjectParams {
 }
 
 func (p *AddProjectParams) WithFavorite(favorite bool) *AddProjectParams {
-	(*p)["favorite"] = favorite
+	(*p)["is_favorite"] = favorite
 	return p
 }
 
@@ -97,10 +96,10 @@ func (t *Todoist) AddProject(ctx context.Context, params *AddProjectParams) (pro
 
 // region GetProject
 
-func (t *Todoist) GetProject(ctx context.Context, projectId int) (project *Project, err error) {
+func (t *Todoist) GetProject(ctx context.Context, projectId string) (project *Project, err error) {
 	project = new(Project)
-	err = t.request(ctx, http.MethodGet, ProjectsEndpoint+"/"+strconv.Itoa(projectId), nil, nil, project)
-
+	encodedProjectId := url.PathEscape(projectId)
+	err = t.request(ctx, http.MethodGet, ProjectsEndpoint+"/"+encodedProjectId, nil, nil, project)
 	return
 }
 
@@ -124,8 +123,8 @@ func (p *UpdateProjectParams) WithName(name string) *UpdateProjectParams {
 	return p
 }
 
-func (p *UpdateProjectParams) WithColor(color int) *UpdateProjectParams {
-	if color != 0 {
+func (p *UpdateProjectParams) WithColor(color string) *UpdateProjectParams {
+	if color != "" {
 		(*p)["color"] = color
 	}
 
@@ -133,34 +132,36 @@ func (p *UpdateProjectParams) WithColor(color int) *UpdateProjectParams {
 }
 
 func (p *UpdateProjectParams) WithFavorite(favorite bool) *UpdateProjectParams {
-	(*p)["favorite"] = favorite
+	(*p)["is_favorite"] = favorite
 	return p
 }
 
-func (t *Todoist) UpdateProject(ctx context.Context, projectId int, params *UpdateProjectParams) (err error) {
+func (t *Todoist) UpdateProject(ctx context.Context, projectId string, params *UpdateProjectParams) (err error) {
 	var payload []byte
 	if payload, err = json.Marshal(params); err != nil {
 		return
 	}
-
-	return t.request(ctx, http.MethodPost, ProjectsEndpoint+"/"+strconv.Itoa(projectId), nil, bytes.NewBuffer(payload), nil)
+	encodedProjectId := url.PathEscape(projectId)
+	return t.request(ctx, http.MethodPost, ProjectsEndpoint+"/"+encodedProjectId, nil, bytes.NewBuffer(payload), nil)
 }
 
 // endregion
 
 // region DeleteProject
 
-func (t *Todoist) DeleteProject(ctx context.Context, projectId int) (err error) {
-	return t.request(ctx, http.MethodDelete, ProjectsEndpoint+"/"+strconv.Itoa(projectId), nil, nil, nil)
+func (t *Todoist) DeleteProject(ctx context.Context, projectId string) (err error) {
+	encodedProjectId := url.PathEscape(projectId)
+	return t.request(ctx, http.MethodDelete, ProjectsEndpoint+"/"+encodedProjectId, nil, nil, nil)
 }
 
 // endregion
 
 // region GetCollaborators
 
-func (t *Todoist) GetCollaborators(ctx context.Context, projectId int) (collaborators []Collaborator, err error) {
+func (t *Todoist) GetCollaborators(ctx context.Context, projectId string) (collaborators []Collaborator, err error) {
 	collaborators = make([]Collaborator, 0)
-	err = t.request(ctx, http.MethodGet, ProjectsEndpoint+"/"+strconv.Itoa(projectId)+"/collaborators", nil, nil, &collaborators)
+	encodedProjectId := url.PathEscape(projectId)
+	err = t.request(ctx, http.MethodGet, ProjectsEndpoint+"/"+encodedProjectId+"/collaborators", nil, nil, &collaborators)
 
 	return
 }

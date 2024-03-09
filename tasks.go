@@ -5,36 +5,36 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strconv"
 	"strings"
+	"net/url"
 )
 
 const TasksEndpoint = "tasks"
 
 type Task struct {
-	Id           int    `json:"id"`
-	ProjectId    int    `json:"project_id"`
-	SectionId    int    `json:"section_id"`
-	Content      string `json:"content"`
-	Description  string `json:"description"`
-	Completed    bool   `json:"completed"`
-	LabelIds     []int  `json:"label_ids"`
-	ParentId     int    `json:"parent_id"`
-	Order        int    `json:"order"`
-	Priority     int    `json:"priority"`
-	Due          Due    `json:"due"`
-	Url          string `json:"url"`
-	CommentCount int    `json:"comment_count"`
-	Assignee     int    `json:"assignee"`
-	Assigner     int    `json:"assigner"`
+	Id           string   `json:"id"`
+	ProjectId    string   `json:"project_id"`
+	SectionId    string   `json:"section_id"`
+	Content      string   `json:"content"`
+	Description  string   `json:"description"`
+	IsCompleted  bool     `json:"is_completed"`
+	Labels       []string `json:"labels"`
+	ParentId     string   `json:"parent_id"`
+	Order        int      `json:"order"`
+	Priority     int      `json:"priority"`
+	Due          Due      `json:"due"`
+	Url          string   `json:"url"`
+	CommentCount int      `json:"comment_count"`
+	AssigneeId   string   `json:"assignee_id"`
+	AssignerId   string   `json:"assigner_id"`
 }
 
 type Due struct {
-	String    string `json:"string"`
-	Date      string `json:"date"`
-	Recurring bool   `json:"recurring"`
-	Datetime  string `json:"datetime"`
-	Timezone  string `json:"timezone"`
+	String      string `json:"string"`
+	Date        string `json:"date"`
+	IsRecurring bool   `json:"is_recurring"`
+	Datetime    string `json:"datetime"`
+	Timezone    string `json:"timezone"`
 }
 
 // region GetTasks
@@ -47,25 +47,25 @@ func MakeGetTasksParams() *GetTasksParams {
 	return &params
 }
 
-func (p *GetTasksParams) WithProjectId(projectId int) *GetTasksParams {
-	if projectId != 0 {
-		(*p)["project_id"] = strconv.Itoa(projectId)
+func (p *GetTasksParams) WithProjectId(projectId string) *GetTasksParams {
+	if projectId != "" {
+		(*p)["project_id"] = projectId
 	}
 
 	return p
 }
 
-func (p *GetTasksParams) WithSectionId(sectionId int) *GetTasksParams {
-	if sectionId != 0 {
-		(*p)["section_id"] = strconv.Itoa(sectionId)
+func (p *GetTasksParams) WithSectionId(sectionId string) *GetTasksParams {
+	if sectionId != "" {
+		(*p)["section_id"] = sectionId
 	}
 
 	return p
 }
 
-func (p *GetTasksParams) WithLabelId(labelId int) *GetTasksParams {
-	if labelId != 0 {
-		(*p)["label_id"] = strconv.Itoa(labelId)
+func (p *GetTasksParams) WithLabel(label string) *GetTasksParams {
+	if label != "" {
+		(*p)["label"] = label
 	}
 
 	return p
@@ -87,16 +87,9 @@ func (p *GetTasksParams) WithLang(lang string) *GetTasksParams {
 	return p
 }
 
-func (p *GetTasksParams) WithIds(ids []int) *GetTasksParams {
+func (p *GetTasksParams) WithIds(ids []string) *GetTasksParams {
 	if ids != nil && len(ids) != 0 {
-		value := strings.Builder{}
-		value.WriteString(strconv.Itoa(ids[0]))
-		for i := 1; i < len(ids); i++ {
-			value.WriteByte(',')
-			value.WriteString(strconv.Itoa(ids[i]))
-		}
-
-		(*p)["ids"] = value.String()
+		(*p)["ids"] = strings.Join(ids, ",")
 	}
 
 	return p
@@ -137,24 +130,24 @@ func (p *AddTaskParams) WithDescription(description string) *AddTaskParams {
 	return p
 }
 
-func (p *AddTaskParams) WithProjectId(projectId int) *AddTaskParams {
-	if projectId != 0 {
+func (p *AddTaskParams) WithProjectId(projectId string) *AddTaskParams {
+	if projectId != "" {
 		(*p)["project_id"] = projectId
 	}
 
 	return p
 }
 
-func (p *AddTaskParams) WithSectionId(sectionId int) *AddTaskParams {
-	if sectionId != 0 {
+func (p *AddTaskParams) WithSectionId(sectionId string) *AddTaskParams {
+	if sectionId != "" {
 		(*p)["section_id"] = sectionId
 	}
 
 	return p
 }
 
-func (p *AddTaskParams) WithParentId(parentId int) *AddTaskParams {
-	if parentId != 0 {
+func (p *AddTaskParams) WithParentId(parentId string) *AddTaskParams {
+	if parentId != "" {
 		(*p)["parent_id"] = parentId
 	}
 
@@ -169,9 +162,9 @@ func (p *AddTaskParams) WithOrder(order int) *AddTaskParams {
 	return p
 }
 
-func (p *AddTaskParams) WithLabelIds(labelIds []int) *AddTaskParams {
-	if labelIds != nil && len(labelIds) != 0 {
-		(*p)["label_ids"] = labelIds
+func (p *AddTaskParams) WithLabels(labels []string) *AddTaskParams {
+	if labels != nil && len(labels) != 0 {
+		(*p)["labels"] = labels
 	}
 
 	return p
@@ -217,9 +210,9 @@ func (p *AddTaskParams) WithDueLang(dueLang string) *AddTaskParams {
 	return p
 }
 
-func (p *AddTaskParams) WithAssignee(assignee int) *AddTaskParams {
-	if assignee != 0 {
-		(*p)["assignee"] = assignee
+func (p *AddTaskParams) WithAssigneeId(assigneeId string) *AddTaskParams {
+	if assigneeId != "" {
+		(*p)["assignee_id"] = assigneeId
 	}
 
 	return p
@@ -241,9 +234,10 @@ func (t *Todoist) AddTask(ctx context.Context, params *AddTaskParams) (task *Tas
 
 // region GetTask
 
-func (t *Todoist) GetTask(ctx context.Context, taskId int) (task *Task, err error) {
+func (t *Todoist) GetTask(ctx context.Context, taskId string) (task *Task, err error) {
 	task = new(Task)
-	err = t.request(ctx, http.MethodGet, TasksEndpoint+"/"+strconv.Itoa(taskId), nil, nil, task)
+	encodedTaskId := url.PathEscape(taskId)
+	err = t.request(ctx, http.MethodGet, TasksEndpoint+"/"+encodedTaskId, nil, nil, task)
 
 	return
 }
@@ -276,9 +270,9 @@ func (p *UpdateTaskParams) WithDescription(description string) *UpdateTaskParams
 	return p
 }
 
-func (p *UpdateTaskParams) WithLabelIds(labelIds []int) *UpdateTaskParams {
-	if labelIds != nil && len(labelIds) != 0 {
-		(*p)["label_ids"] = labelIds
+func (p *UpdateTaskParams) WithLabelIds(labels []string) *UpdateTaskParams {
+	if labels != nil && len(labels) != 0 {
+		(*p)["label_ids"] = labels
 	}
 
 	return p
@@ -324,45 +318,48 @@ func (p *UpdateTaskParams) WithDueLang(dueLang string) *UpdateTaskParams {
 	return p
 }
 
-func (p *UpdateTaskParams) WithAssignee(assignee int) *UpdateTaskParams {
-	if assignee != 0 {
-		(*p)["assignee"] = assignee
+func (p *UpdateTaskParams) WithAssigneeId(assigneeId string) *UpdateTaskParams {
+	if assigneeId != "" {
+		(*p)["assignee_id"] = assigneeId
 	}
 
 	return p
 }
 
-func (t *Todoist) UpdateTask(ctx context.Context, taskId int, params *UpdateTaskParams) (err error) {
+func (t *Todoist) UpdateTask(ctx context.Context, taskId string, params *UpdateTaskParams) (err error) {
 	var payload []byte
 	if payload, err = json.Marshal(params); err != nil {
 		return
 	}
-
-	return t.request(ctx, http.MethodPost, TasksEndpoint+"/"+strconv.Itoa(taskId), nil, bytes.NewBuffer(payload), nil)
+	encodedTaskId := url.PathEscape(taskId)
+	return t.request(ctx, http.MethodPost, TasksEndpoint+"/"+encodedTaskId, nil, bytes.NewBuffer(payload), nil)
 }
 
 // endregion
 
 // region CloseTask
 
-func (t *Todoist) CloseTask(ctx context.Context, taskId int) (err error) {
-	return t.request(ctx, http.MethodPost, TasksEndpoint+"/"+strconv.Itoa(taskId)+"/close", nil, nil, nil)
+func (t *Todoist) CloseTask(ctx context.Context, taskId string) (err error) {
+	encodedTaskId := url.PathEscape(taskId)
+	return t.request(ctx, http.MethodPost, TasksEndpoint+"/"+encodedTaskId+"/close", nil, nil, nil)
 }
 
 // endregion
 
 // region ReopenTask
 
-func (t *Todoist) ReopenTask(ctx context.Context, taskId int) (err error) {
-	return t.request(ctx, http.MethodPost, TasksEndpoint+"/"+strconv.Itoa(taskId)+"/reopen", nil, nil, nil)
+func (t *Todoist) ReopenTask(ctx context.Context, taskId string) (err error) {
+	encodedTaskId := url.PathEscape(taskId)
+	return t.request(ctx, http.MethodPost, TasksEndpoint+"/"+encodedTaskId+"/reopen", nil, nil, nil)
 }
 
 // endregion
 
 // region DeleteTask
 
-func (t *Todoist) DeleteTask(ctx context.Context, taskId int) (err error) {
-	return t.request(ctx, http.MethodDelete, TasksEndpoint+"/"+strconv.Itoa(taskId), nil, nil, nil)
+func (t *Todoist) DeleteTask(ctx context.Context, taskId string) (err error) {
+	encodedTaskId := url.PathEscape(taskId)
+	return t.request(ctx, http.MethodDelete, TasksEndpoint+"/"+encodedTaskId, nil, nil, nil)
 }
 
 // endregion

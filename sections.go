@@ -5,14 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	"strconv"
+	"net/url"
 )
 
 const SectionsEndpoint = "sections"
 
 type Section struct {
-	Id        int    `json:"id"`
-	ProjectId int    `json:"project_id"`
+	Id        string `json:"id"`
+	ProjectId string `json:"project_id"`
 	Order     int    `json:"order"`
 	Name      string `json:"name"`
 }
@@ -27,9 +27,9 @@ func MakeGetSectionsParams() *GetSectionsParams {
 	return &params
 }
 
-func (p *GetSectionsParams) WithProjectId(projectId int) *GetSectionsParams {
-	if projectId != 0 {
-		(*p)["project_id"] = strconv.Itoa(projectId)
+func (p *GetSectionsParams) WithProjectId(projectId string) *GetSectionsParams {
+	if projectId != "" {
+		(*p)["project_id"] = projectId
 	}
 
 	return p
@@ -62,8 +62,8 @@ func (p *AddSectionParams) WithName(name string) *AddSectionParams {
 	return p
 }
 
-func (p *AddSectionParams) WithProjectId(projectId int) *AddSectionParams {
-	if projectId != 0 {
+func (p *AddSectionParams) WithProjectId(projectId string) *AddSectionParams {
+	if projectId != "" {
 		(*p)["project_id"] = projectId
 	}
 
@@ -94,10 +94,10 @@ func (t *Todoist) AddSection(ctx context.Context, params *AddSectionParams) (sec
 
 // region GetSection
 
-func (t *Todoist) GetSection(ctx context.Context, sectionId int) (section *Section, err error) {
+func (t *Todoist) GetSection(ctx context.Context, sectionId string) (section *Section, err error) {
 	section = new(Section)
-	err = t.request(ctx, http.MethodGet, SectionsEndpoint+"/"+strconv.Itoa(sectionId), nil, nil, section)
-
+	encodedSectionId := url.PathEscape(sectionId)
+	err = t.request(ctx, http.MethodGet, SectionsEndpoint+"/"+encodedSectionId, nil, nil, section)
 	return
 }
 
@@ -121,21 +121,22 @@ func (p *UpdateSectionParams) WithName(name string) *UpdateSectionParams {
 	return p
 }
 
-func (t *Todoist) UpdateSection(ctx context.Context, sectionId int, params *UpdateSectionParams) (err error) {
+func (t *Todoist) UpdateSection(ctx context.Context, sectionId string, params *UpdateSectionParams) (err error) {
 	var payload []byte
 	if payload, err = json.Marshal(params); err != nil {
 		return
 	}
-
-	return t.request(ctx, http.MethodPost, SectionsEndpoint+"/"+strconv.Itoa(sectionId), nil, bytes.NewBuffer(payload), nil)
+	encodedSectionId := url.PathEscape(sectionId)
+	return t.request(ctx, http.MethodPost, SectionsEndpoint+"/"+encodedSectionId, nil, bytes.NewBuffer(payload), nil)
 }
 
 // endregion
 
 // region DeleteSection
 
-func (t *Todoist) DeleteSection(ctx context.Context, sectionId int) (err error) {
-	return t.request(ctx, http.MethodDelete, SectionsEndpoint+"/"+strconv.Itoa(sectionId), nil, nil, nil)
+func (t *Todoist) DeleteSection(ctx context.Context, sectionId string) (err error) {
+	encodedSectionId := url.PathEscape(sectionId)
+	return t.request(ctx, http.MethodDelete, SectionsEndpoint+"/"+encodedSectionId, nil, nil, nil)
 }
 
 // endregion

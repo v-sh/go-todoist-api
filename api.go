@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const BaseUrl = "https://api.todoist.com/rest/v1/"
+const BaseUrl = "https://api.todoist.com/rest/v2/"
 
 type Todoist struct {
 	opts *Opts
